@@ -1,5 +1,7 @@
 package com.android.myvolley;
 
+import android.os.Process;
+
 import java.util.concurrent.BlockingQueue;
 
 /**
@@ -31,5 +33,24 @@ public class CacheDispatcher extends Thread {
     @Override
     public void run() {
         if (DEBUG) VolleyLog.v("Start new dispatcher");
+        Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+
+        mCache.initialize();
+
+        Request<?> request;
+        while(true){
+            request = null;
+
+            try {
+                request = mCacheQueue.take();
+            } catch (InterruptedException e) {
+                if(mQuit){
+                    return;
+                }
+                continue;
+            }
+
+            request.addMarker("cache-queue-take");
+        }
     }
 }
