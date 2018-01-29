@@ -1,5 +1,8 @@
 package com.android.myvolley.toolbox;
 
+import com.android.myvolley.AuthFailureError;
+import com.android.myvolley.Request;
+
 import org.apache.http.HttpResponse;
 
 import java.io.IOException;

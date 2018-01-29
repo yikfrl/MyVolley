@@ -29,15 +29,19 @@ public class Volley {
         } catch (PackageManager.NameNotFoundException e) {
         }
 
-//        if(stack == null){
-//            if(Build.VERSION.SDK_INT >= 9){
-//                stack = new HurlStack();
-//            } else{
-//                stack = new HttpClientStack(AndroidHttpClient.newInstance(userAgent));
-//            }
-//        }
-//
-        return null;
+        if(stack == null){
+            if(Build.VERSION.SDK_INT >= 9){
+                stack = new HurlStack();
+            } else{
+                stack = new HttpClientStack(AndroidHttpClient.newInstance(userAgent));
+            }
+        }
+
+        RequestQueue queue;
+        if(maxDiskCacheBytes <= -1){
+            queue = new RequestQueue();
+        }
+
     }
 
 
