@@ -99,4 +99,9 @@ public class NetworkDispatcher extends Thread {
             }
         }
     }
+
+    private void parseAndDeliverNetworkError(Request<?> request, VolleyError error){
+        error = request.parseNetworkError(error);
+        mDelivery.postError(request, error);
+    }
 }
