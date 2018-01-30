@@ -35,6 +35,7 @@ public class InternalUtils {
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
+
         return hash;
     }
 }
