@@ -18,7 +18,7 @@ public interface Cache {
 
 
     public static class Entry{
-        public byte[] date;
+        public byte[] data;
         public String etag;
         public long serverDate;
         public long lastModified;

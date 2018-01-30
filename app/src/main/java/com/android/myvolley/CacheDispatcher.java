@@ -50,7 +50,61 @@ public class CacheDispatcher extends Thread {
                 continue;
             }
 
-            request.addMarker("cache-queue-take");
+            try{
+                request.addMarker("cache-queue-take");
+
+                if(request.isCanceled()){
+                    request.finish("cache-discard-canceled");
+                    continue;
+                }
+
+                // Attempt to retrieve this item from cache.
+                Cache.Entry entry = mCache.get(request.getCacheKey());
+                if(entry == null){
+                    request.addMarker("cache-miss");
+                    mNetworkQueue.put(request);
+                    continue;
+                }
+
+                // If it is completely expired, just send it to the network.
+                if(entry.isExpired()){
+                    request.addMarker("cache-hit-expired");
+                    request.setCacheEntry(entry);
+                    mNetworkQueue.put(request);
+                    continue;
+                }
+
+                request.addMarker("cache-hit");
+                Response<?> response = request.parseNetwordResponse(new NetworkResponse(entry.data, entry.responseHeaders));
+                request.addMarker("cache-hit-parsed");
+
+                if(!entry.refreshNeeded()){
+                    mDelivery.postResponse(request, response);
+                } else {
+                    //TODO 在此场景下一个请求可能会产生两次回复，有没有可能造成困扰？
+                    request.addMarker("cache-hit-refresh-needed");
+                    request.setCacheEntry(entry);
+
+                    response.intermediate = true;
+
+                    final Request<?> finalRequest = request;
+                    mDelivery.postResponse(request, response, new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                mNetworkQueue.put(finalRequest);
+                            } catch (InterruptedException e) {
+                                // Not much we can do about this.
+                            }
+                        }
+                    });
+                }
+
+            }catch (Exception e){
+                VolleyLog.e(e, "Unhandled exception %s",e.toString());
+            }
+
         }
+
     }
 }
