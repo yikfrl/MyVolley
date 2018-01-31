@@ -43,6 +43,7 @@ public class DefaultRetryPolice implements RetryPolice {
     @Override
     public void retry(VolleyError error) throws VolleyError {
         mCurrentRetryCount++;
+        //TODO mBackoffMultiplier?
         mCurrentTimeoutMs += (mCurrentTimeoutMs * mBackoffMultiplier);
         if(!hasAttemptRemaining()){
             throw error;

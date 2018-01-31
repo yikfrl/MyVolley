@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.net.http.AndroidHttpClient;
 import android.os.Build;
 
+import com.android.myvolley.Network;
 import com.android.myvolley.RequestQueue;
 
 import java.io.File;
@@ -37,9 +38,13 @@ public class Volley {
             }
         }
 
+        Network network = new BasicNetwork(stack);
+
         RequestQueue queue;
         if(maxDiskCacheBytes <= -1){
-            queue = new RequestQueue();
+            queue = new RequestQueue(new DiskBaseCache(cacheDir), network);
+        }else{
+            queue = new RequestQueue(new Disk)
         }
 
     }
