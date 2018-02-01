@@ -6,10 +6,13 @@ import com.android.myvolley.Cache;
 import com.android.myvolley.VolleyLog;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -60,14 +63,42 @@ public class DiskBaseCache implements Cache {
         }
         mEntries.clear();
         mTotalSize = 0;
-        VolleyLog.d("Cache cleared.")
+        VolleyLog.d("Cache cleared.");
     }
 
 
 
     @Override
     public synchronized Entry get(String key) {
-        return null;
+        CacheHeader entry = mEntries.get(key);
+        if(entry == null){
+            return null;
+        }
+
+        File file = getFileForKey(key);
+        CountingInputStream cis = null;
+        try{
+            cis = new CountingInputStream(new BufferedInputStream(new FileInputStream(file)));
+            CacheHeader.readHeader(cis);
+            byte[] data = streamToBytes(cis, (int) (file.length() - cis.bytesRead));
+            return entry.toCacheEntry(data);
+        } catch (IOException e) {
+            VolleyLog.d("%s: %s",file.getAbsolutePath(), e.toString());
+            remove(key);
+            return null;
+        } catch(NegativeArraySizeException e){
+            VolleyLog.d("%s: %s",file.getAbsolutePath(), e.toString());
+            remove(key);
+            return null;
+        } finally {
+            if(cis != null){
+                try {
+                    cis.close();
+                } catch (IOException e) {
+                    return null;
+                }
+            }
+        }
     }
 
     @Override
@@ -89,6 +120,7 @@ public class DiskBaseCache implements Cache {
             try{
                 fis = new BufferedInputStream(new FileInputStream(file));
                 CacheHeader entry = CacheHeader.readHeader(fis);
+                //TODO 此处entry的size为整个文件的大小
                 entry.size = file.length();
                 putEntry(entry.key, entry);
             } catch (IOException e) {
@@ -108,17 +140,49 @@ public class DiskBaseCache implements Cache {
     }
     @Override
     public synchronized void invalidate(String key, boolean fullExpire) {
-
+        Entry entry = get(key);
+        if(entry != null){
+            entry.softTtl = 0;
+            if(fullExpire){
+                entry.ttl = 0;
+            }
+            put(key,entry);
+        }
     }
 
     @Override
     public synchronized void put(String key, Entry entry) {
-        pruneIfNeeded(entry.data.length)
+        pruneIfNeeded(entry.data.length);
+        File file = getFileForKey(key);
+        try{
+            BufferedOutputStream fos = new BufferedOutputStream(new FileOutputStream(file));
+            CacheHeader e = new CacheHeader(key, entry);
+            boolean success = e.writeHeader(fos);
+            if(!success){
+                fos.close();
+                VolleyLog.d("Failed to write header for %s",file.getAbsolutePath());
+                throw new IOException();
+            }
+            fos.write(entry.data);
+            fos.close();
+            putEntry(key, e);
+            return;
+        } catch (IOException e) {
+        }
+        boolean deleted = file.delete();
+        if(!deleted){
+            VolleyLog.d("Could not clean up file %s",file.getAbsolutePath());
+        }
     }
 
     @Override
     public synchronized void remove(String key) {
-
+        boolean deleted = getFileForKey(key).delete();
+        removeEntry(key);
+        if(!deleted){
+            VolleyLog.d("Could not delete cache entry for key=%s, filename=%s",
+                    key,getFilenameForKey(key));
+        }
     }
 
     private String getFilenameForKey(String key){
@@ -223,6 +287,7 @@ public class DiskBaseCache implements Cache {
 
         public CacheHeader(String key, Entry entry){
             this.key = key;
+            //TODO 此处的size为data的大小
             this.size = entry.data.length;
             this.etag = entry.etag;
             this.serverDate = entry.serverDate;
@@ -280,6 +345,33 @@ public class DiskBaseCache implements Cache {
                 VolleyLog.d("%s",e.toString());
                 return false;
             }
+        }
+    }
+
+    private static class CountingInputStream extends FilterInputStream{
+
+        private int bytesRead = 0;
+
+        private CountingInputStream(InputStream in) {
+            super(in);
+        }
+
+        @Override
+        public int read() throws IOException {
+            int result = super.read();
+            if(result != -1){
+                bytesRead++;
+            }
+            return result;
+        }
+
+        @Override
+        public int read(byte[] buffer, int byteOffset, int byteCount) throws IOException {
+            int result = super.read(buffer, byteOffset, byteCount);
+            if(result != -1){
+                bytesRead += result;
+            }
+            return result;
         }
     }
 

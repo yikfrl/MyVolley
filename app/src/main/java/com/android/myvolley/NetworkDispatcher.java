@@ -6,8 +6,6 @@ import android.os.Build;
 import android.os.Process;
 import android.os.SystemClock;
 
-import com.android.myvolley.toolbox.Volley;
-
 import java.util.concurrent.BlockingQueue;
 
 /**
@@ -85,7 +83,7 @@ public class NetworkDispatcher extends Thread {
                     request.addMarker("network-cache-written");
                 }
 
-                request.mardDeliveried();
+                request.markDeliveried();
                 mDelivery.postResponse(request, response);
 
             } catch (VolleyError volleyError) {

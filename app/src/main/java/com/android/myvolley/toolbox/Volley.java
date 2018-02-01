@@ -44,9 +44,12 @@ public class Volley {
         if(maxDiskCacheBytes <= -1){
             queue = new RequestQueue(new DiskBaseCache(cacheDir), network);
         }else{
-            queue = new RequestQueue(new Disk)
+            queue = new RequestQueue(new DiskBaseCache(cacheDir, maxDiskCacheBytes), network);
         }
 
+        queue.start();
+
+        return queue;
     }
 
 

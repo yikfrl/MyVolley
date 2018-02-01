@@ -283,7 +283,7 @@ public abstract class Request<T> implements Comparable<Request> {
         return mRetryPolice;
     }
 
-    public void mardDeliveried(){
+    public void markDeliveried(){
         mResponseDelivered = true;
     }
 
